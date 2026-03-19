@@ -31,17 +31,27 @@ def _establish_download_session(session: requests.Session, timeout: int = 60) ->
     before the download loop begins.
     """
     r = session.get(AUTH_URL, allow_redirects=True, timeout=timeout)
-    if r.status_code == 401:
-        raise RuntimeError(
-            "Authentication failed before download (HTTP 401). "
-            "Your token may be invalid or expired. "
-            "Generate a new one at https://urs.earthdata.nasa.gov"
-        )
-    if r.status_code != 200:
-        raise RuntimeError(
-            f"Authentication failed before download (HTTP {r.status_code}). "
-            "Please check your token and try again."
-        )
+
+    # ── Diagnostic: log everything about the auth call ────────────────────
+    diag_lines = [
+        "── _establish_download_session diagnostic ──",
+        f"Final URL:       {r.url}",
+        f"Status code:     {r.status_code}",
+        "",
+        "── Auth response body (first 500 chars) ──",
+        (r.text or "")[:500],
+        "",
+        "── Auth response headers ──",
+        *[f"  {k}: {v}" for k, v in r.headers.items()],
+        "",
+        "── Redirect history ──",
+        *[f"  [{h.status_code}] {h.url}" for h in r.history] or ["  (none)"],
+        "",
+        "── Cookies set on session AFTER auth call ──",
+        *[f"  {c.name} (domain={c.domain}): {c.value[:40]}..." for c in session.cookies] or ["  (none)"],
+    ]
+    raise RuntimeError("\n".join(diag_lines))
+    # ── End diagnostic ────────────────────────────────────────────────────
 
 
 def download_and_extract_ict_files(
@@ -67,9 +77,6 @@ def download_and_extract_ict_files(
         )
 
         if resp.status_code != 200:
-            # ── Diagnostic block ──────────────────────────────────────────
-            # Collect as much detail as possible to identify the exact cause.
-            # Remove this block once the issue is resolved.
             diag_lines = [
                 f"Download failed for: {fn}",
                 f"HTTP status:         {resp.status_code}",
@@ -81,16 +88,12 @@ def download_and_extract_ict_files(
                 *[f"  {k}: {v}" for k, v in resp.headers.items()],
                 "",
                 "── Session cookies at time of request ──",
-                *[f"  {c.name}: {c.value}" for c in session.cookies],
-                "",
-                "── Session headers ──",
-                *[f"  {k}: {v}" for k, v in session.headers.items()],
+                *[f"  {c.name} (domain={c.domain}): {c.value[:40]}..." for c in session.cookies],
                 "",
                 "── Redirect history ──",
-                *[f"  [{r.status_code}] {r.url}" for r in resp.history],
+                *[f"  [{r.status_code}] {r.url}" for r in resp.history] or ["  (none)"],
             ]
             raise RuntimeError("\n".join(diag_lines))
-            # ── End diagnostic block ──────────────────────────────────────
 
         zip_path.write_bytes(resp.content)
 
