@@ -27,13 +27,8 @@ class RunResult:
 
 def _establish_download_session(session: requests.Session, timeout: int = 60) -> None:
     """
-    The SOOT download endpoint requires a session cookie to be set by the
-    /Authenticate/user endpoint before it will serve files — the Bearer token
-    header alone is not sufficient for downloads.
-
-    Calling this before the download loop ensures the session has both:
-      - the Authorization: Bearer <token> header (set in session_from_token)
-      - the session cookie set by the auth endpoint
+    Hit /Authenticate/user so the server sets any required session cookie
+    before the download loop begins.
     """
     r = session.get(AUTH_URL, allow_redirects=True, timeout=timeout)
     if r.status_code == 401:
@@ -42,13 +37,10 @@ def _establish_download_session(session: requests.Session, timeout: int = 60) ->
             "Your token may be invalid or expired. "
             "Generate a new one at https://urs.earthdata.nasa.gov"
         )
-    if resp.status_code != 200:
+    if r.status_code != 200:
         raise RuntimeError(
-            f"Download failed for {fn} (HTTP {resp.status_code}).\n"
-            f"Response body: {resp.text[:1000]}\n"
-            f"Response headers: {dict(resp.headers)}\n"
-            f"Session cookies: {dict(session.cookies)}\n"
-            f"Session headers: {dict(session.headers)}"
+            f"Authentication failed before download (HTTP {r.status_code}). "
+            "Please check your token and try again."
         )
 
 
@@ -73,11 +65,32 @@ def download_and_extract_ict_files(
             allow_redirects=True,
             timeout=180,
         )
+
         if resp.status_code != 200:
-            raise RuntimeError(
-                f"Download failed for {fn} (HTTP {resp.status_code}).\n"
-                f"Response: {resp.text[:300]}"
-            )
+            # ── Diagnostic block ──────────────────────────────────────────
+            # Collect as much detail as possible to identify the exact cause.
+            # Remove this block once the issue is resolved.
+            diag_lines = [
+                f"Download failed for: {fn}",
+                f"HTTP status:         {resp.status_code}",
+                "",
+                "── Response body (first 1000 chars) ──",
+                (resp.text or "")[:1000],
+                "",
+                "── Response headers ──",
+                *[f"  {k}: {v}" for k, v in resp.headers.items()],
+                "",
+                "── Session cookies at time of request ──",
+                *[f"  {c.name}: {c.value}" for c in session.cookies],
+                "",
+                "── Session headers ──",
+                *[f"  {k}: {v}" for k, v in session.headers.items()],
+                "",
+                "── Redirect history ──",
+                *[f"  [{r.status_code}] {r.url}" for r in resp.history],
+            ]
+            raise RuntimeError("\n".join(diag_lines))
+            # ── End diagnostic block ──────────────────────────────────────
 
         zip_path.write_bytes(resp.content)
 
