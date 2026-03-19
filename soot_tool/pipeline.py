@@ -33,24 +33,34 @@ def _establish_download_session(session: requests.Session, timeout: int = 60) ->
     r = session.get(AUTH_URL, allow_redirects=True, timeout=timeout)
 
     # ── Diagnostic: log everything about the auth call ────────────────────
-    diag_lines = [
+    redirect_lines = [f"  [{h.status_code}] {h.url}" for h in r.history]
+    if not redirect_lines:
+        redirect_lines = ["  (none)"]
+
+    cookie_lines = [f"  {c.name} (domain={c.domain}): {c.value[:40]}..." for c in session.cookies]
+    if not cookie_lines:
+        cookie_lines = ["  (none)"]
+
+    header_lines = [f"  {k}: {v}" for k, v in r.headers.items()]
+
+    diag_parts = [
         "── _establish_download_session diagnostic ──",
-        f"Final URL:       {r.url}",
-        f"Status code:     {r.status_code}",
+        f"Final URL:    {r.url}",
+        f"Status code:  {r.status_code}",
         "",
         "── Auth response body (first 500 chars) ──",
         (r.text or "")[:500],
         "",
         "── Auth response headers ──",
-        *[f"  {k}: {v}" for k, v in r.headers.items()],
+    ] + header_lines + [
         "",
         "── Redirect history ──",
-        *[f"  [{h.status_code}] {h.url}" for h in r.history] or ["  (none)"],
+    ] + redirect_lines + [
         "",
-        "── Cookies set on session AFTER auth call ──",
-        *[f"  {c.name} (domain={c.domain}): {c.value[:40]}..." for c in session.cookies] or ["  (none)"],
-    ]
-    raise RuntimeError("\n".join(diag_lines))
+        "── Cookies on session AFTER auth call ──",
+    ] + cookie_lines
+
+    raise RuntimeError("\n".join(diag_parts))
     # ── End diagnostic ────────────────────────────────────────────────────
 
 
@@ -61,7 +71,6 @@ def download_and_extract_ict_files(
 ) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Establish session cookie required by the download endpoint
     _establish_download_session(session)
 
     for fn in filenames:
@@ -77,7 +86,14 @@ def download_and_extract_ict_files(
         )
 
         if resp.status_code != 200:
-            diag_lines = [
+            redirect_lines = [f"  [{h.status_code}] {h.url}" for h in resp.history]
+            if not redirect_lines:
+                redirect_lines = ["  (none)"]
+
+            cookie_lines = [f"  {c.name} (domain={c.domain}): {c.value[:40]}..." for c in session.cookies]
+            header_lines = [f"  {k}: {v}" for k, v in resp.headers.items()]
+
+            diag_parts = [
                 f"Download failed for: {fn}",
                 f"HTTP status:         {resp.status_code}",
                 "",
@@ -85,15 +101,15 @@ def download_and_extract_ict_files(
                 (resp.text or "")[:1000],
                 "",
                 "── Response headers ──",
-                *[f"  {k}: {v}" for k, v in resp.headers.items()],
+            ] + header_lines + [
                 "",
                 "── Session cookies at time of request ──",
-                *[f"  {c.name} (domain={c.domain}): {c.value[:40]}..." for c in session.cookies],
+            ] + cookie_lines + [
                 "",
                 "── Redirect history ──",
-                *[f"  [{r.status_code}] {r.url}" for r in resp.history] or ["  (none)"],
-            ]
-            raise RuntimeError("\n".join(diag_lines))
+            ] + redirect_lines
+
+            raise RuntimeError("\n".join(diag_parts))
 
         zip_path.write_bytes(resp.content)
 
