@@ -14,6 +14,7 @@ from .icartt import ICARTTReader
 
 
 DOWNLOAD_FILES_URL = "https://asdc.larc.nasa.gov/soot-api/data_files/downloadFiles"
+AUTH_URL           = "https://asdc.larc.nasa.gov/soot-api/Authenticate/user"
 
 
 @dataclass
@@ -24,12 +25,39 @@ class RunResult:
     cols: int
 
 
+def _establish_download_session(session: requests.Session, timeout: int = 60) -> None:
+    """
+    The SOOT download endpoint requires a session cookie to be set by the
+    /Authenticate/user endpoint before it will serve files — the Bearer token
+    header alone is not sufficient for downloads.
+
+    Calling this before the download loop ensures the session has both:
+      - the Authorization: Bearer <token> header (set in session_from_token)
+      - the session cookie set by the auth endpoint
+    """
+    r = session.get(AUTH_URL, allow_redirects=True, timeout=timeout)
+    if r.status_code == 401:
+        raise RuntimeError(
+            "Authentication failed before download (HTTP 401). "
+            "Your token may be invalid or expired. "
+            "Generate a new one at https://urs.earthdata.nasa.gov"
+        )
+    if r.status_code != 200:
+        raise RuntimeError(
+            f"Authentication failed before download (HTTP {r.status_code}). "
+            "Please check your token and try again."
+        )
+
+
 def download_and_extract_ict_files(
     session: requests.Session,
     filenames: List[str],
     out_dir: Path,
 ) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Establish session cookie required by the download endpoint
+    _establish_download_session(session)
 
     for fn in filenames:
         fn = str(fn).strip()
@@ -42,10 +70,10 @@ def download_and_extract_ict_files(
             allow_redirects=True,
             timeout=180,
         )
-        if resp.status_code !=200:
+        if resp.status_code != 200:
             raise RuntimeError(
                 f"Download failed for {fn} (HTTP {resp.status_code}).\n"
-                f"Response: {resp.text[:500]}"
+                f"Response: {resp.text[:300]}"
             )
 
         zip_path.write_bytes(resp.content)
@@ -55,16 +83,11 @@ def download_and_extract_ict_files(
 
         zip_path.unlink(missing_ok=True)
 
-    # recursive, case-insensitive-ish by checking both patterns
     ict_files = list(out_dir.rglob("*.ict")) + list(out_dir.rglob("*.ICT"))
     return ict_files
 
 
 def _add_datetime_columns(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
-    """
-    Your current logic: parse meta['date_info'] (first 3 items) + meta['seconds'] to build a start_datetime,
-    then for any columns containing UTC or TIME, create a Datetime variant. :contentReference[oaicite:11]{index=11}
-    """
     fmt = "%Y,%m,%d"
 
     date_info = meta.get("date_info")
