@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
 import requests
@@ -14,7 +14,6 @@ from .icartt import ICARTTReader
 
 
 DOWNLOAD_FILES_URL = "https://asdc.larc.nasa.gov/soot-api/data_files/downloadFiles"
-AUTH_URL           = "https://asdc.larc.nasa.gov/soot-api/Authenticate/user"
 LOGIN_URL          = "https://asdc.larc.nasa.gov/soot-api/login"
 
 
@@ -26,109 +25,46 @@ class RunResult:
     cols: int
 
 
-def _extract_bearer_token(session: requests.Session) -> str:
-    """Pull the Bearer token back out of the session headers for direct use."""
-    auth_header = session.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        return auth_header[len("Bearer "):]
-    return ""
-
-
-def _try_direct_login(session: requests.Session, timeout: int = 60) -> None:
+def _establish_asdc_session(session: requests.Session, timeout: int = 60) -> None:
     """
-    Approach B: attempt to hit /soot-api/login directly with the Bearer token
-    to trick ASDC into setting its session cookie without the browser OAuth dance.
+    Hit /soot-api/login with the Bearer token already on the session.
+    The endpoint accepts the token header directly and sets an ASDC session
+    cookie, which the download endpoint requires.
 
-    We try three strategies in order:
-      1. GET /login with Authorization: Bearer header
-      2. POST /login with token in the request body
-      3. GET /login?token=<token> as a query param
+    Flow:
+      GET /soot-api/login  (Authorization: Bearer <token>)
+        → 302 redirect back to /soot-api/login
+        → 302 redirect to /soot/download
+        → ASDC session cookie set on session
+        → downloads now work
     """
-    token = _extract_bearer_token(session)
+    r = session.get(LOGIN_URL, allow_redirects=True, timeout=timeout)
 
-    diag_lines = ["── Approach B: Direct Login Diagnostic ──", ""]
+    if r.status_code == 401:
+        raise RuntimeError(
+            "Authentication failed (HTTP 401). "
+            "Your token may be invalid or expired. "
+            "Generate a new one at https://urs.earthdata.nasa.gov"
+        )
 
-    # ── Strategy 1: GET with Bearer header ───────────────────────────────
-    r1 = session.get(LOGIN_URL, allow_redirects=True, timeout=timeout)
-    redirect_history_1 = [f"  [{h.status_code}] {h.url}" for h in r1.history] or ["  (none)"]
-    cookies_after_1 = [f"  {c.name} (domain={c.domain}): {c.value[:40]}" for c in session.cookies] or ["  (none)"]
+    # Verify we landed on ASDC and not back on the URS login page
+    if "urs.earthdata.nasa.gov" in r.url:
+        raise RuntimeError(
+            "Authentication failed — redirected back to Earthdata Login. "
+            "Your token may be invalid or expired. "
+            "Generate a new one at https://urs.earthdata.nasa.gov"
+        )
 
-    diag_lines += [
-        "── Strategy 1: GET /login with Bearer header ──",
-        f"  Final URL:   {r1.url}",
-        f"  Status:      {r1.status_code}",
-        f"  Body:        {(r1.text or '')[:200]}",
-        "  Redirects:   " + ", ".join(redirect_history_1),
-        "  Cookies now: " + ", ".join(cookies_after_1),
-        "",
+    # Verify the ASDC session cookie was actually set
+    asdc_cookies = [
+        c for c in session.cookies
+        if "asdc" in c.domain.lower() or "larc" in c.domain.lower()
     ]
-
-    # Check if strategy 1 set an ASDC session cookie
-    asdc_cookies_1 = [c for c in session.cookies if "asdc" in c.domain.lower() or "larc" in c.domain.lower()]
-    if asdc_cookies_1 and r1.status_code == 200 and "urs.earthdata" not in r1.url:
-        diag_lines.append("✅ Strategy 1 appears to have worked — ASDC cookie set!")
-        raise RuntimeError("\n".join(diag_lines))
-
-    # ── Strategy 2: POST /login with token in body ────────────────────────
-    r2 = requests.post(
-        LOGIN_URL,
-        json={"token": token},
-        headers={"Authorization": f"Bearer {token}"},
-        allow_redirects=True,
-        timeout=timeout,
-    )
-    redirect_history_2 = [f"  [{h.status_code}] {h.url}" for h in r2.history] or ["  (none)"]
-
-    diag_lines += [
-        "── Strategy 2: POST /login with token in body ──",
-        f"  Final URL:   {r2.url}",
-        f"  Status:      {r2.status_code}",
-        f"  Body:        {(r2.text or '')[:200]}",
-        "  Redirects:   " + ", ".join(redirect_history_2),
-        "",
-    ]
-
-    # Update session cookies from response 2
-    session.cookies.update(r2.cookies)
-    asdc_cookies_2 = [c for c in session.cookies if "asdc" in c.domain.lower() or "larc" in c.domain.lower()]
-    if asdc_cookies_2 and r2.status_code == 200 and "urs.earthdata" not in r2.url:
-        diag_lines.append("✅ Strategy 2 appears to have worked — ASDC cookie set!")
-        raise RuntimeError("\n".join(diag_lines))
-
-    # ── Strategy 3: GET /login?token=<token> as query param ──────────────
-    r3 = requests.get(
-        LOGIN_URL,
-        params={"token": token},
-        headers={"Authorization": f"Bearer {token}"},
-        allow_redirects=True,
-        timeout=timeout,
-    )
-    redirect_history_3 = [f"  [{h.status_code}] {h.url}" for h in r3.history] or ["  (none)"]
-
-    diag_lines += [
-        "── Strategy 3: GET /login?token=<token> as query param ──",
-        f"  Final URL:   {r3.url}",
-        f"  Status:      {r3.status_code}",
-        f"  Body:        {(r3.text or '')[:200]}",
-        "  Redirects:   " + ", ".join(redirect_history_3),
-        "",
-    ]
-
-    session.cookies.update(r3.cookies)
-    asdc_cookies_3 = [c for c in session.cookies if "asdc" in c.domain.lower() or "larc" in c.domain.lower()]
-    if asdc_cookies_3 and r3.status_code == 200 and "urs.earthdata" not in r3.url:
-        diag_lines.append("✅ Strategy 3 appears to have worked — ASDC cookie set!")
-        raise RuntimeError("\n".join(diag_lines))
-
-    # ── All strategies exhausted ──────────────────────────────────────────
-    diag_lines += [
-        "── Final session cookies ──",
-        *[f"  {c.name} (domain={c.domain}): {c.value[:40]}" for c in session.cookies],
-        "",
-        "❌ All strategies failed to set an ASDC session cookie.",
-        "   Approach B is not viable — OAuth2 app registration (Approach A) will be required.",
-    ]
-    raise RuntimeError("\n".join(diag_lines))
+    if not asdc_cookies:
+        raise RuntimeError(
+            "Authentication completed but no ASDC session cookie was set. "
+            "Please try regenerating your token at https://urs.earthdata.nasa.gov"
+        )
 
 
 def download_and_extract_ict_files(
@@ -138,7 +74,8 @@ def download_and_extract_ict_files(
 ) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    _try_direct_login(session)
+    # Establish the ASDC session cookie required by the download endpoint
+    _establish_asdc_session(session)
 
     for fn in filenames:
         fn = str(fn).strip()
@@ -153,27 +90,10 @@ def download_and_extract_ict_files(
         )
 
         if resp.status_code != 200:
-            redirect_lines = [f"  [{h.status_code}] {h.url}" for h in resp.history] or ["  (none)"]
-            cookie_lines = [f"  {c.name} (domain={c.domain}): {c.value[:40]}" for c in session.cookies]
-            header_lines = [f"  {k}: {v}" for k, v in resp.headers.items()]
-
-            diag_parts = (
-                [
-                    f"Download failed for: {fn}",
-                    f"HTTP status:         {resp.status_code}",
-                    "",
-                    "── Response body (first 1000 chars) ──",
-                    (resp.text or "")[:1000],
-                    "",
-                    "── Response headers ──",
-                ]
-                + header_lines
-                + ["", "── Session cookies at time of request ──"]
-                + cookie_lines
-                + ["", "── Redirect history ──"]
-                + redirect_lines
+            raise RuntimeError(
+                f"Download failed for {fn} (HTTP {resp.status_code}). "
+                f"Response: {(resp.text or '')[:300]}"
             )
-            raise RuntimeError("\n".join(diag_parts))
 
         zip_path.write_bytes(resp.content)
 
