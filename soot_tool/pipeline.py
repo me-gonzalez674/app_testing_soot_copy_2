@@ -27,16 +27,12 @@ class RunResult:
 
 def _establish_asdc_session(session: requests.Session, timeout: int = 60) -> None:
     """
-    Hit /soot-api/login with the Bearer token already on the session.
-    The endpoint accepts the token header directly and sets an ASDC session
-    cookie, which the download endpoint requires.
+    Hit /soot-api/login to establish the ASDC session cookie required
+    by the download endpoint.
 
-    Flow:
-      GET /soot-api/login  (Authorization: Bearer <token>)
-        → 302 redirect back to /soot-api/login
-        → 302 redirect to /soot/download
-        → ASDC session cookie set on session
-        → downloads now work
+    The Bearer token on the session header is accepted directly by this
+    endpoint, which then sets an asdc.larc.nasa.gov session cookie that
+    authorizes subsequent file downloads.
     """
     r = session.get(LOGIN_URL, allow_redirects=True, timeout=timeout)
 
@@ -47,7 +43,6 @@ def _establish_asdc_session(session: requests.Session, timeout: int = 60) -> Non
             "Generate a new one at https://urs.earthdata.nasa.gov"
         )
 
-    # Verify we landed on ASDC and not back on the URS login page
     if "urs.earthdata.nasa.gov" in r.url:
         raise RuntimeError(
             "Authentication failed — redirected back to Earthdata Login. "
@@ -55,7 +50,6 @@ def _establish_asdc_session(session: requests.Session, timeout: int = 60) -> Non
             "Generate a new one at https://urs.earthdata.nasa.gov"
         )
 
-    # Verify the ASDC session cookie was actually set
     asdc_cookies = [
         c for c in session.cookies
         if "asdc" in c.domain.lower() or "larc" in c.domain.lower()
@@ -74,7 +68,6 @@ def download_and_extract_ict_files(
 ) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Establish the ASDC session cookie required by the download endpoint
     _establish_asdc_session(session)
 
     for fn in filenames:
