@@ -42,10 +42,13 @@ def _establish_download_session(session: requests.Session, timeout: int = 60) ->
             "Your token may be invalid or expired. "
             "Generate a new one at https://urs.earthdata.nasa.gov"
         )
-    if r.status_code != 200:
+    if resp.status_code != 200:
         raise RuntimeError(
-            f"Authentication failed before download (HTTP {r.status_code}). "
-            "Please check your token and try again."
+            f"Download failed for {fn} (HTTP {resp.status_code}).\n"
+            f"Response body: {resp.text[:1000]}\n"
+            f"Response headers: {dict(resp.headers)}\n"
+            f"Session cookies: {dict(session.cookies)}\n"
+            f"Session headers: {dict(session.headers)}"
         )
 
 
