@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 import requests
@@ -14,7 +14,6 @@ from .icartt import ICARTTReader
 
 
 DOWNLOAD_FILES_URL = "https://asdc.larc.nasa.gov/soot-api/data_files/downloadFiles"
-LOGIN_URL          = "https://asdc.larc.nasa.gov/soot-api/login"
 
 
 @dataclass
@@ -25,50 +24,12 @@ class RunResult:
     cols: int
 
 
-def _establish_asdc_session(session: requests.Session, timeout: int = 60) -> None:
-    """
-    Hit /soot-api/login to establish the ASDC session cookie required
-    by the download endpoint.
-
-    The Bearer token on the session header is accepted directly by this
-    endpoint, which then sets an asdc.larc.nasa.gov session cookie that
-    authorizes subsequent file downloads.
-    """
-    r = session.get(LOGIN_URL, allow_redirects=True, timeout=timeout)
-
-    if r.status_code == 401:
-        raise RuntimeError(
-            "Authentication failed (HTTP 401). "
-            "Your token may be invalid or expired. "
-            "Generate a new one at https://urs.earthdata.nasa.gov"
-        )
-
-    if "urs.earthdata.nasa.gov" in r.url:
-        raise RuntimeError(
-            "Authentication failed — redirected back to Earthdata Login. "
-            "Your token may be invalid or expired. "
-            "Generate a new one at https://urs.earthdata.nasa.gov"
-        )
-
-    asdc_cookies = [
-        c for c in session.cookies
-        if "asdc" in c.domain.lower() or "larc" in c.domain.lower()
-    ]
-    if not asdc_cookies:
-        raise RuntimeError(
-            "Authentication completed but no ASDC session cookie was set. "
-            "Please try regenerating your token at https://urs.earthdata.nasa.gov"
-        )
-
-
 def download_and_extract_ict_files(
     session: requests.Session,
     filenames: List[str],
     out_dir: Path,
 ) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    _establish_asdc_session(session)
 
     for fn in filenames:
         fn = str(fn).strip()
@@ -81,12 +42,8 @@ def download_and_extract_ict_files(
             allow_redirects=True,
             timeout=180,
         )
-
         if resp.status_code != 200:
-            raise RuntimeError(
-                f"Download failed for {fn} (HTTP {resp.status_code}). "
-                f"Response: {(resp.text or '')[:300]}"
-            )
+            raise RuntimeError(f"Download failed for {fn} (HTTP {resp.status_code}).")
 
         zip_path.write_bytes(resp.content)
 
@@ -95,11 +52,16 @@ def download_and_extract_ict_files(
 
         zip_path.unlink(missing_ok=True)
 
+    # recursive, case-insensitive-ish by checking both patterns
     ict_files = list(out_dir.rglob("*.ict")) + list(out_dir.rglob("*.ICT"))
     return ict_files
 
 
 def _add_datetime_columns(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
+    """
+    Your current logic: parse meta['date_info'] (first 3 items) + meta['seconds'] to build a start_datetime,
+    then for any columns containing UTC or TIME, create a Datetime variant. :contentReference[oaicite:11]{index=11}
+    """
     fmt = "%Y,%m,%d"
 
     date_info = meta.get("date_info")
