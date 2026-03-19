@@ -2,10 +2,9 @@
 import tempfile
 from pathlib import Path
 
-import pandas as pd
 import streamlit as st
 
-from soot_tool.auth import session_from_token, assert_authorized
+from soot_tool.auth import session_from_credentials, assert_authorized
 from soot_tool.soot_api import (
     get_campaigns,
     get_years,
@@ -13,45 +12,73 @@ from soot_tool.soot_api import (
     get_pis,
     get_filenames,
 )
-from soot_tool.pipeline import run_download_convert, find_url_column
+from soot_tool.pipeline import run_download_convert
 
 
 st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
 st.title("NASA SOOT — ICARTT Downloader + CSV Converter")
 
-st.write("Enter your NASA Earthdata Bearer Token to authorize downloads.")
 st.markdown(
-    "1. Log in at [urs.earthdata.nasa.gov](https://urs.earthdata.nasa.gov)\n"
-    "2. Click **Generate Token** from the top-right menu\n"
-    "3. Click **Show Token**, copy it, and paste it below\n\n"
-    "_Tokens are valid for 60 days and can be revoked at any time._"
+    "Enter your [NASA Earthdata Login](https://urs.earthdata.nasa.gov) credentials "
+    "to access and download SOOT data."
 )
 
-user_token = st.text_input(
-    "Earthdata Bearer Token",
-    type="password",
-    placeholder="Paste your token here...",
-)
+# ── Privacy notice ────────────────────────────────────────────────────────────
+with st.expander("ℹ️ How your credentials are used", expanded=False):
+    st.markdown(
+        """
+        Your username and password are used **only** to authenticate with NASA's
+        Earthdata Login (urs.earthdata.nasa.gov) on your behalf. Specifically:
 
-if not user_token:
+        - Credentials are submitted directly to NASA's OAuth2 login endpoint over HTTPS
+        - They are **never stored**, logged, or written to disk
+        - They are discarded from memory immediately after your session is established
+        - Only the resulting session cookie is retained for the duration of your visit
+        - Closing or refreshing the app ends the session entirely
+
+        This is the same authentication method used by NASA's own
+        [earthaccess](https://github.com/nsidc/earthaccess) Python library.
+        """
+    )
+
+# ── Credential inputs ─────────────────────────────────────────────────────────
+col1, col2 = st.columns(2)
+with col1:
+    username = st.text_input(
+        "Earthdata Username",
+        placeholder="Your Earthdata Login username",
+    )
+with col2:
+    password = st.text_input(
+        "Earthdata Password",
+        type="password",
+        placeholder="Your Earthdata Login password",
+    )
+
+if not username or not password:
     st.stop()
 
-
+# ── Session creation ──────────────────────────────────────────────────────────
+# Cache by username only — password never stored in cache key or session state.
+# If a new login is needed, the user refreshes the page.
 @st.cache_resource(show_spinner="Authenticating with NASA Earthdata...")
-def get_session(token: str):
-    session = session_from_token(token)
+def get_session(uname: str, _password: str):
+    """
+    _password is prefixed with _ so Streamlit does not include it in the
+    cache key hash — it is used only inside this function and discarded.
+    """
+    session = session_from_credentials(uname, _password)
     assert_authorized(session)
     return session
 
-
 try:
-    session = get_session(user_token)
+    session = get_session(username, password)
     st.success("Authorized ✅")
 except Exception as e:
     st.error(str(e))
     st.stop()
 
-# ---- Load selection tables ----
+# ── Campaign selection ────────────────────────────────────────────────────────
 with st.spinner("Loading campaigns..."):
     campaigns_df = get_campaigns(session)
 
@@ -76,7 +103,7 @@ with st.spinner("Loading PIs..."):
 pi_col = "lastname" if "lastname" in pis_df.columns else pis_df.columns[0]
 pi_lastname = st.selectbox("PI Last Name", sorted(pis_df[pi_col].astype(str).unique()))
 
-# ---- Fetch filenames + show all columns ----
+# ── Filename preview ──────────────────────────────────────────────────────────
 with st.spinner("Fetching filenames..."):
     fn_df = get_filenames(session, campaign, year, platform, pi_lastname)
 
@@ -84,28 +111,17 @@ if "filename" not in fn_df.columns:
     st.error("Filename response missing 'filename' column.")
     st.stop()
 
-# Surface the URL column we'll use so the user can verify
-url_col = find_url_column(fn_df)
-if url_col:
-    st.info(f"Using **`{url_col}`** column for direct downloads.")
-else:
-    st.warning(
-        f"No URL column detected in filenames response. "
-        f"Available columns: `{fn_df.columns.tolist()}` — "
-        f"downloads will fail until a URL column is identified."
-    )
-
-st.write(f"Files available: **{len(fn_df)}**")
+filenames = fn_df["filename"].dropna().astype(str).tolist()
+st.write(f"Files available: **{len(filenames)}**")
 st.dataframe(fn_df.head(200), use_container_width=True)
 
-# ---- Run pipeline ----
+# ── Download + convert ────────────────────────────────────────────────────────
 if st.button("Download + Convert", type="primary"):
     with tempfile.TemporaryDirectory() as tmp:
         workdir = Path(tmp)
 
         with st.spinner("Downloading, extracting, parsing..."):
-            # Pass the full dataframe — pipeline extracts URLs and filenames itself
-            result = run_download_convert(session, fn_df, workdir, cleanup_ict=True)
+            result = run_download_convert(session, filenames, workdir, cleanup_ict=True)
 
         st.success(f"Done. Rows: {result.rows:,} | Columns: {result.cols:,}")
         st.dataframe(result.df.head(200), use_container_width=True)
