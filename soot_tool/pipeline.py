@@ -13,7 +13,12 @@ from zipfile import ZipFile
 from .icartt import ICARTTReader
 
 
-DOWNLOAD_FILES_URL = "https://asdc.larc.nasa.gov/soot-api/data_files/downloadFiles"
+# Candidate column names to look for direct download URLs in the filenames response.
+# The first match found will be used.
+_URL_COLUMN_CANDIDATES = [
+    "url", "download_url", "downloadUrl", "download_link",
+    "link", "href", "file_url", "fileUrl", "path", "file_path",
+]
 
 
 @dataclass
@@ -24,44 +29,91 @@ class RunResult:
     cols: int
 
 
+def find_url_column(df: pd.DataFrame) -> Optional[str]:
+    """
+    Find the first column in df that looks like it contains direct download URLs.
+    Returns None if no match is found.
+    """
+    cols_lower = {c.lower(): c for c in df.columns}
+
+    for candidate in _URL_COLUMN_CANDIDATES:
+        if candidate.lower() in cols_lower:
+            return cols_lower[candidate.lower()]
+
+    # Secondary pass: any column whose name contains 'url' or 'link'
+    for col in df.columns:
+        if "url" in col.lower() or "link" in col.lower():
+            return col
+
+    return None
+
+
 def download_and_extract_ict_files(
     session: requests.Session,
-    filenames: List[str],
+    filenames_df: pd.DataFrame,
     out_dir: Path,
 ) -> List[Path]:
+    """
+    Download .ict files using direct URLs from filenames_df with Bearer token auth.
+
+    This mirrors the wget approach:
+        wget --header "Authorization: Bearer $TOKEN" $URL
+
+    The Bearer token is already attached to all session requests as a header,
+    so no additional auth steps are needed — direct URL + header = download.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for fn in filenames:
-        fn = str(fn).strip()
+    # Find the URL column
+    url_col = find_url_column(filenames_df)
+    if url_col is None:
+        available = filenames_df.columns.tolist()
+        raise RuntimeError(
+            f"Could not find a URL column in the filenames response.\n"
+            f"Available columns: {available}\n"
+            f"Please check the column names and update _URL_COLUMN_CANDIDATES in pipeline.py."
+        )
+
+    filename_col = "filename" if "filename" in filenames_df.columns else filenames_df.columns[0]
+    urls = filenames_df[url_col].dropna().astype(str).tolist()
+    filenames = filenames_df[filename_col].dropna().astype(str).tolist()
+
+    for url, fn in zip(urls, filenames):
+        url = url.strip()
+        fn = fn.strip()
         zip_base = fn.split(".ict")[0]
         zip_path = out_dir / f"{zip_base}.zip"
 
         resp = session.get(
-            DOWNLOAD_FILES_URL,
-            params={"filenames": fn},
+            url,
             allow_redirects=True,
             timeout=180,
         )
+
         if resp.status_code != 200:
-            raise RuntimeError(f"Download failed for {fn} (HTTP {resp.status_code}).")
+            raise RuntimeError(
+                f"Download failed for {fn} (HTTP {resp.status_code}).\n"
+                f"URL: {url}\n"
+                f"Response: {(resp.text or '')[:300]}"
+            )
 
-        zip_path.write_bytes(resp.content)
+        # Handle zip or raw .ict response
+        content_type = resp.headers.get("content-type", "").lower()
+        if "zip" in content_type or url.endswith(".zip"):
+            zip_path.write_bytes(resp.content)
+            with ZipFile(zip_path, "r") as z:
+                z.extractall(out_dir)
+            zip_path.unlink(missing_ok=True)
+        else:
+            # Raw .ict file returned directly
+            ict_path = out_dir / fn
+            ict_path.write_bytes(resp.content)
 
-        with ZipFile(zip_path, "r") as z:
-            z.extractall(out_dir)
-
-        zip_path.unlink(missing_ok=True)
-
-    # recursive, case-insensitive-ish by checking both patterns
     ict_files = list(out_dir.rglob("*.ict")) + list(out_dir.rglob("*.ICT"))
     return ict_files
 
 
 def _add_datetime_columns(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
-    """
-    Your current logic: parse meta['date_info'] (first 3 items) + meta['seconds'] to build a start_datetime,
-    then for any columns containing UTC or TIME, create a Datetime variant. :contentReference[oaicite:11]{index=11}
-    """
     fmt = "%Y,%m,%d"
 
     date_info = meta.get("date_info")
@@ -106,12 +158,12 @@ def parse_ict_files_to_df(ict_files: List[Path]) -> pd.DataFrame:
 
 def run_download_convert(
     session: requests.Session,
-    filenames: List[str],
+    filenames_df: pd.DataFrame,
     working_dir: Path,
     *,
     cleanup_ict: bool = True,
 ) -> RunResult:
-    ict_files = download_and_extract_ict_files(session, filenames, working_dir)
+    ict_files = download_and_extract_ict_files(session, filenames_df, working_dir)
     df = parse_ict_files_to_df(ict_files)
 
     if cleanup_ict:
