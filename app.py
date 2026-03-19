@@ -27,7 +27,7 @@ st.markdown(
     "1. Log in at [urs.earthdata.nasa.gov](https://urs.earthdata.nasa.gov)\n"
     "2. Click **Generate Token** from the top-right menu\n"
     "3. Click **Show Token**, copy it, and paste it below\n\n"
-    "_Tokens are valid for 60 days and can be revoked at any time from the Earthdata site._"
+    "_Tokens are valid for 60 days and can be revoked at any time._"
 )
 
 user_token = st.text_input(
@@ -39,9 +39,15 @@ user_token = st.text_input(
 if not user_token:
     st.stop()
 
-try:
-    session = session_from_token(user_token)
+# Cache the session so re-runs don't re-authenticate on every interaction
+@st.cache_resource(show_spinner="Authenticating with NASA Earthdata...")
+def get_session(token: str):
+    session = session_from_token(token)
     assert_authorized(session)
+    return session
+
+try:
+    session = get_session(user_token)
     st.success("Authorized ✅")
 except Exception as e:
     st.error(str(e))
