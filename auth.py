@@ -16,6 +16,7 @@ def session_from_token(user_token: str) -> requests.Session:
     """
     Create a requests.Session using the user's NASA Earthdata Bearer token.
     Users generate this at: https://urs.earthdata.nasa.gov
+    Token is valid for 60 days. The user can hold a max of 2 active tokens.
     """
     user_token = user_token.strip()
     if not user_token:
@@ -29,6 +30,7 @@ def session_from_token(user_token: str) -> requests.Session:
 def session_from_cookiejar_bytes(cookie_bytes: bytes) -> requests.Session:
     """
     Legacy fallback: create a session from an uploaded .urs_cookies file.
+    Kept in case users still have a valid cookie file they prefer to use.
     """
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(cookie_bytes)
@@ -50,7 +52,7 @@ def session_from_cookiejar_bytes(cookie_bytes: bytes) -> requests.Session:
 def assert_authorized(session: requests.Session, *, timeout: int = 60) -> None:
     """
     Verify the session can reach the SOOT API.
-    Works for both token and cookie sessions.
+    Works for both token-based and cookie-based sessions.
     """
     r = session.get(AUTH_URL, allow_redirects=True, timeout=timeout)
 
@@ -63,5 +65,5 @@ def assert_authorized(session: requests.Session, *, timeout: int = 60) -> None:
     if r.status_code != 200:
         raise RuntimeError(
             f"Authorization failed (HTTP {r.status_code}). "
-            "Please check your credentials and try again."
+            "Please check your token and try again."
         )
