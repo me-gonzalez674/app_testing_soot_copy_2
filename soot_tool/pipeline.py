@@ -42,8 +42,11 @@ def download_and_extract_ict_files(
             allow_redirects=True,
             timeout=180,
         )
-        if resp.status_code != 200:
-            raise RuntimeError(f"Download failed for {fn} (HTTP {resp.status_code}).")
+        if resp.status_code !=200:
+            raise RuntimeError(
+                f"Download failed for {fn} (HTTP {resp.status_code}).\n"
+                f"Response: {resp.text[:500]}"
+            )
 
         zip_path.write_bytes(resp.content)
 
