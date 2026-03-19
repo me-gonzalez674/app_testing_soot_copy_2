@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from soot_tool.auth import session_from_cookiejar_bytes, assert_authorized
+from soot_tool.auth import session_from_token, assert_authorized
 from soot_tool.soot_api import (
     get_campaigns,
     get_years,
@@ -13,25 +13,39 @@ from soot_tool.soot_api import (
     get_pis,
     get_filenames,
 )
-from soot_tool.pipeline import run_download_convert
+from soot_tool.pipeline import run_download_convert, find_url_column
 
 
 st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
 st.title("NASA SOOT — ICARTT Downloader + CSV Converter")
 
-st.write(
-    "Upload your Earthdata `.urs_cookies` file (Netscape cookie format). "
-    "This app uses your cookies to authorize downloads."
+st.write("Enter your NASA Earthdata Bearer Token to authorize downloads.")
+st.markdown(
+    "1. Log in at [urs.earthdata.nasa.gov](https://urs.earthdata.nasa.gov)\n"
+    "2. Click **Generate Token** from the top-right menu\n"
+    "3. Click **Show Token**, copy it, and paste it below\n\n"
+    "_Tokens are valid for 60 days and can be revoked at any time._"
 )
 
-cookie_upload = st.file_uploader("Upload .urs_cookies", type=None)
+user_token = st.text_input(
+    "Earthdata Bearer Token",
+    type="password",
+    placeholder="Paste your token here...",
+)
 
-if cookie_upload is None:
+if not user_token:
     st.stop()
 
-try:
-    session = session_from_cookiejar_bytes(cookie_upload.getvalue())
+
+@st.cache_resource(show_spinner="Authenticating with NASA Earthdata...")
+def get_session(token: str):
+    session = session_from_token(token)
     assert_authorized(session)
+    return session
+
+
+try:
+    session = get_session(user_token)
     st.success("Authorized ✅")
 except Exception as e:
     st.error(str(e))
@@ -62,7 +76,7 @@ with st.spinner("Loading PIs..."):
 pi_col = "lastname" if "lastname" in pis_df.columns else pis_df.columns[0]
 pi_lastname = st.selectbox("PI Last Name", sorted(pis_df[pi_col].astype(str).unique()))
 
-# ---- Fetch filenames preview ----
+# ---- Fetch filenames + show all columns ----
 with st.spinner("Fetching filenames..."):
     fn_df = get_filenames(session, campaign, year, platform, pi_lastname)
 
@@ -70,8 +84,18 @@ if "filename" not in fn_df.columns:
     st.error("Filename response missing 'filename' column.")
     st.stop()
 
-filenames = fn_df["filename"].dropna().astype(str).tolist()
-st.write(f"Files available: **{len(filenames)}**")
+# Surface the URL column we'll use so the user can verify
+url_col = find_url_column(fn_df)
+if url_col:
+    st.info(f"Using **`{url_col}`** column for direct downloads.")
+else:
+    st.warning(
+        f"No URL column detected in filenames response. "
+        f"Available columns: `{fn_df.columns.tolist()}` — "
+        f"downloads will fail until a URL column is identified."
+    )
+
+st.write(f"Files available: **{len(fn_df)}**")
 st.dataframe(fn_df.head(200), use_container_width=True)
 
 # ---- Run pipeline ----
@@ -80,7 +104,8 @@ if st.button("Download + Convert", type="primary"):
         workdir = Path(tmp)
 
         with st.spinner("Downloading, extracting, parsing..."):
-            result = run_download_convert(session, filenames, workdir, cleanup_ict=True)
+            # Pass the full dataframe — pipeline extracts URLs and filenames itself
+            result = run_download_convert(session, fn_df, workdir, cleanup_ict=True)
 
         st.success(f"Done. Rows: {result.rows:,} | Columns: {result.cols:,}")
         st.dataframe(result.df.head(200), use_container_width=True)
