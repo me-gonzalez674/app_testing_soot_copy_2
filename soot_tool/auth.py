@@ -5,6 +5,7 @@ import os
 import tempfile
 from http.cookiejar import MozillaCookieJar
 
+import earthaccess
 import requests
 
 
@@ -14,17 +15,35 @@ AUTH_URL = f"{BASE_URL}/Authenticate/user"
 
 def session_from_token(user_token: str) -> requests.Session:
     """
-    Create a requests.Session using the user's NASA Earthdata Bearer token.
-    Users generate this at: https://urs.earthdata.nasa.gov
-    Token is valid for 60 days. The user can hold a max of 2 active tokens.
+    Create a fully authenticated requests.Session using the user's NASA
+    Earthdata Bearer token.
+
+    earthaccess handles the OAuth session establishment internally,
+    which satisfies both the metadata endpoints (Bearer header check)
+    and the download endpoint (ASDC session cookie check).
+
+    Users generate their token at: https://urs.earthdata.nasa.gov
+    Tokens are valid for 60 days.
     """
     user_token = user_token.strip()
     if not user_token:
         raise ValueError("Token cannot be empty.")
 
-    s = requests.Session()
-    s.headers.update({"Authorization": f"Bearer {user_token}"})
-    return s
+    # Inject the token into the environment so earthaccess can pick it up
+    os.environ["EARTHDATA_TOKEN"] = user_token
+
+    try:
+        auth = earthaccess.login(strategy="environment")
+    except Exception as e:
+        raise RuntimeError(
+            f"earthaccess login failed: {e}. "
+            "Your token may be invalid or expired. "
+            "Generate a new one at https://urs.earthdata.nasa.gov"
+        ) from e
+
+    # Get the fully authenticated session from earthaccess
+    session = earthaccess.get_requests_https_session()
+    return session
 
 
 def session_from_cookiejar_bytes(cookie_bytes: bytes) -> requests.Session:
@@ -52,7 +71,7 @@ def session_from_cookiejar_bytes(cookie_bytes: bytes) -> requests.Session:
 def assert_authorized(session: requests.Session, *, timeout: int = 60) -> None:
     """
     Verify the session can reach the SOOT API.
-    Works for both token-based and cookie-based sessions.
+    Works for both earthaccess-based and cookie-based sessions.
     """
     r = session.get(AUTH_URL, allow_redirects=True, timeout=timeout)
 
