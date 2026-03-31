@@ -123,7 +123,7 @@ def build_figure(
     show_raw: bool = True,
     title: str = "NASA SOOT — Ozone vs Altitude",
 ) -> matplotlib.figure.Figure:
-    cleaned, profile = build_profile(
+    cleaned = build_profile(
         df,
         y_col=y_col,
         x_col=x_col,
