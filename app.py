@@ -221,7 +221,7 @@ if st.session_state["download_complete"]:
         mime="text/csv",
     )
 
-    if st.button("Go to Demo Graph Page"):
+    if st.button("Show Graph"):
         st.session_state["page"] = "graph"
         st.rerun()
 
