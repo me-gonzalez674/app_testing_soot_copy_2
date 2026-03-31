@@ -21,6 +21,37 @@ def get_session(uname: str, _password: str):
     assert_authorized(session)
     return session
 
+
+# ------------------------------------------------------------
+# Session state defaults
+# ------------------------------------------------------------
+defaults = {
+    "page": "download",
+    "download_complete": False,
+    "download_csv_bytes": None,
+    "download_filename": None,
+    "download_preview_df": None,
+    "download_summary": None,
+    "saved_username": "",
+    "saved_password": "",
+    "selected_campaign": None,
+    "selected_year": None,
+    "selected_platform": None,
+    "selected_pi_lastname": None,
+}
+
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+# ------------------------------------------------------------
+# Graph page
+# ------------------------------------------------------------
+if st.session_state["page"] == "graph":
+    render_graph_page()
+    st.stop()
+
+
 # ------------------------------------------------------------
 # Download page
 # ------------------------------------------------------------
@@ -287,32 +318,3 @@ def render_graph_page() -> None:
 
 
 st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
-
-# ------------------------------------------------------------
-# Session state defaults
-# ------------------------------------------------------------
-defaults = {
-    "page": "download",
-    "download_complete": False,
-    "download_csv_bytes": None,
-    "download_filename": None,
-    "download_preview_df": None,
-    "download_summary": None,
-    "saved_username": "",
-    "saved_password": "",
-    "selected_campaign": None,
-    "selected_year": None,
-    "selected_platform": None,
-    "selected_pi_lastname": None,
-}
-
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-# ------------------------------------------------------------
-# Graph page
-# ------------------------------------------------------------
-if st.session_state["page"] == "graph":
-    render_graph_page()
-    st.stop()
