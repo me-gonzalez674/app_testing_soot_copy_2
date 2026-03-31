@@ -59,7 +59,7 @@ def build_profile(
     y_col: str = "Altitude_m_MSL",
     x_col: str = "Ozone_ppbv",
     min_periods: int = 3,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     cleaned = clean_data(df, y_col=y_col, x_col=x_col)
     return cleaned
 
