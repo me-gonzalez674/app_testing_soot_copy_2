@@ -232,6 +232,19 @@ if st.session_state["download_complete"]:
 def load_graph_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
+graph_df = load_graph_df(st.session_state["download_full_df"])
+
+graph_cols = sorted(graph_df.columns.astype(str).unique())
+
+y_axis = st.selectbox(
+    "Y Axis Variable",
+    graph_cols,
+)
+x_axis = st.selectbox(
+    "X Axis Variable",
+    graph_cols,
+)
+
 def render_graph_page() -> None:
     st.title("Graph")
     st.write(f"This graph is generated from {st.session_state['download_filename']}.")
@@ -275,19 +288,6 @@ def render_graph_page() -> None:
     #     value=True,
     #     key="graph_show_ci",
     # )
-
-    graph_df = load_graph_df(st.session_state["download_full_df"])
-
-    graph_cols = sorted(graph_df.columns.astype(str).unique())
-
-    y_axis = st.selectbox(
-        "Y Axis Variable",
-        graph_cols,
-    )
-    x_axis = st.selectbox(
-        "X Axis Variable",
-        graph_cols,
-    )
 
     try:
         st.caption(
