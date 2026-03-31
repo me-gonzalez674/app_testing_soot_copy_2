@@ -45,14 +45,6 @@ for key, value in defaults.items():
         st.session_state[key] = value
 
 # ------------------------------------------------------------
-# Graph page
-# ------------------------------------------------------------
-if st.session_state["page"] == "graph":
-    render_graph_page()
-    st.stop()
-
-
-# ------------------------------------------------------------
 # Download page
 # ------------------------------------------------------------
 st.title("NASA SOOT — ICARTT Downloader + CSV Converter")
@@ -318,3 +310,11 @@ def render_graph_page() -> None:
 
 
 st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
+
+
+# ------------------------------------------------------------
+# Graph page
+# ------------------------------------------------------------
+if st.session_state["page"] == "graph":
+    render_graph_page()
+    st.stop()
