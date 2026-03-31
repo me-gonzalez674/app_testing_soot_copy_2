@@ -91,7 +91,7 @@ def make_plot(
 
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
-    ax.set_ylabel(f"{y_cl}")
+    ax.set_ylabel(f"{y_col}")
     ax.grid(True, alpha=0.22)
     ax.legend(frameon=False, loc="best")
 
