@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from soot_tool.graphing import build_altitude_profile_figure
+from soot_tool.graphing import build_figure
 from soot_tool.auth import session_from_credentials, assert_authorized
 from soot_tool.soot_api import (
     get_campaigns,
@@ -295,7 +295,7 @@ def render_graph_page() -> None:
             f"| Columns: {', '.join(graph_df.columns.astype(str))}"
         )
 
-        fig = build_altitude_profile_figure(
+        fig = build_figure(
             graph_df,
             y_col=y_axis,
             x_col=x_axis,
