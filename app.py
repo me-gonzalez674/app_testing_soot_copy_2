@@ -31,6 +31,7 @@ defaults = {
     "download_csv_bytes": None,
     "download_filename": None,
     "download_preview_df": None,
+    "download_full_df": None,
     "download_summary": None,
     "saved_username": "",
     "saved_password": "",
