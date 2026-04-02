@@ -57,8 +57,8 @@ def render_graph_page() -> None:
     
     bin_m = st.sidebar.slider(
         "Bin size (m)",
-        min_value=10,
-        max_value=500,
+        min_value=1,
+        max_value=100,
         value=50,
         step=10,
         key="graph_bin_m",
