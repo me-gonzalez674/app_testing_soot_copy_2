@@ -15,11 +15,96 @@ from soot_tool.soot_api import (
 )
 from soot_tool.pipeline import run_download_convert
 
+@st.cache_data(show_spinner=False)
+def load_graph_df(df: pd.DataFrame) -> pd.DataFrame:
+    return df
+
 @st.cache_resource(show_spinner="Authenticating with NASA Earthdata...")
 def get_session(uname: str, _password: str):
     session = session_from_credentials(uname, _password)
     assert_authorized(session)
     return session
+
+# ------------------------------------------------------------
+# Graphing capabilities
+# ------------------------------------------------------------
+def render_graph_page() -> None:
+    st.title("Graph")
+    st.write(f"This graph is generated from {st.session_state['download_filename']}.")
+
+    if st.button("← Back to Download Page"):
+        st.session_state["page"] = "download"
+        st.rerun()
+    
+    if ("download_full_df" not in st.session_state or st.session_state["download_full_df"] is None):
+        st.error("No data loaded. Please try again.")
+        st.stop()
+
+    graph_df = load_graph_df(st.session_state["download_full_df"])
+
+    graph_cols = sorted(graph_df.columns.astype(str).unique())
+    
+    y_axis = st.selectbox(
+        "Y Axis Variable",
+        graph_cols,
+    )
+    x_axis = st.selectbox(
+        "X Axis Variable",
+        graph_cols,
+    )
+
+    st.sidebar.header("Graph Controls")
+
+    show_raw = st.sidebar.checkbox(
+        "Show raw scatter",
+        value=True,
+        key="graph_show_raw",
+    )
+
+    # bin_m = st.sidebar.slider(
+    #     "Altitude bin size (m)",
+    #     min_value=10,
+    #     max_value=500,
+    #     value=50,
+    #     step=10,
+    #     key="graph_bin_m",
+    # )
+
+    # window = st.sidebar.slider(
+    #     "Rolling window (bins)",
+    #     min_value=3,
+    #     max_value=51,
+    #     value=11,
+    #     step=2,
+    #     key="graph_window",
+    # )
+
+    # show_ci = st.sidebar.checkbox(
+    #     "Show ~95% CI band (SEM)",
+    #     value=True,
+    #     key="graph_show_ci",
+    # )
+
+    try:
+        st.caption(
+            f"Using {len(graph_df):,} rows from {st.session_state['download_filename']} "
+            f"| Columns: {', '.join(graph_df.columns.astype(str))}"
+        )
+
+        fig = build_figure(
+            graph_df,
+            y_col=y_axis,
+            x_col=x_axis,
+            show_raw=show_raw,
+            title=f"{x_axis} vs {y_axis} (From {st.session_state['download_filename']})",
+        )
+
+        st.pyplot(fig)
+
+    except Exception as e:
+        st.warning(f"Could not build graph from {st.session_state["download_filename"]}: {e}")
+
+    st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
 
 
 # ------------------------------------------------------------
@@ -44,6 +129,14 @@ defaults = {
 for key, value in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = value
+
+
+# ------------------------------------------------------------
+# Graph page
+# ------------------------------------------------------------
+if st.session_state["page"] == "graph":
+    render_graph_page()
+    st.stop()
 
 # ------------------------------------------------------------
 # Download page
@@ -226,95 +319,3 @@ if st.session_state["download_complete"]:
     if st.button("Show Graph"):
         st.session_state["page"] = "graph"
         st.rerun()
-
-# ------------------------------------------------------------
-# Graphing capabilities
-# ------------------------------------------------------------
-@st.cache_data(show_spinner=False)
-def load_graph_df(df: pd.DataFrame) -> pd.DataFrame:
-    return df
-
-def render_graph_page() -> None:
-    st.title("Graph")
-    st.write(f"This graph is generated from {st.session_state['download_filename']}.")
-
-    if st.button("← Back to Download Page"):
-        st.session_state["page"] = "download"
-        st.rerun()
-    
-    if ("download_full_df" not in st.session_state or st.session_state["download_full_df"] is None):
-        st.error("No data loaded. Please try again.")
-        st.stop()
-
-    graph_df = load_graph_df(st.session_state["download_full_df"])
-
-    graph_cols = sorted(graph_df.columns.astype(str).unique())
-    
-    y_axis = st.selectbox(
-        "Y Axis Variable",
-        graph_cols,
-    )
-    x_axis = st.selectbox(
-        "X Axis Variable",
-        graph_cols,
-    )
-
-    st.sidebar.header("Graph Controls")
-
-    show_raw = st.sidebar.checkbox(
-        "Show raw scatter",
-        value=True,
-        key="graph_show_raw",
-    )
-
-    # bin_m = st.sidebar.slider(
-    #     "Altitude bin size (m)",
-    #     min_value=10,
-    #     max_value=500,
-    #     value=50,
-    #     step=10,
-    #     key="graph_bin_m",
-    # )
-
-    # window = st.sidebar.slider(
-    #     "Rolling window (bins)",
-    #     min_value=3,
-    #     max_value=51,
-    #     value=11,
-    #     step=2,
-    #     key="graph_window",
-    # )
-
-    # show_ci = st.sidebar.checkbox(
-    #     "Show ~95% CI band (SEM)",
-    #     value=True,
-    #     key="graph_show_ci",
-    # )
-
-    try:
-        st.caption(
-            f"Using {len(graph_df):,} rows from {st.session_state['download_filename']} "
-            f"| Columns: {', '.join(graph_df.columns.astype(str))}"
-        )
-
-        fig = build_figure(
-            graph_df,
-            y_col=y_axis,
-            x_col=x_axis,
-            show_raw=show_raw,
-            title=f"{x_axis} vs {y_axis} (From {st.session_state['download_filename']})",
-        )
-
-        st.pyplot(fig)
-
-    except Exception as e:
-        st.warning(f"Could not build graph from {st.session_state["download_filename"]}: {e}")
-
-    st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
-
-# ------------------------------------------------------------
-# Graph page
-# ------------------------------------------------------------
-if st.session_state["page"] == "graph":
-    render_graph_page()
-    st.stop()
