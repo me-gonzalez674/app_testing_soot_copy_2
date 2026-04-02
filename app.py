@@ -54,36 +54,36 @@ def render_graph_page() -> None:
     )
 
     st.sidebar.header("Graph Controls")
-
+    
+    bin_m = st.sidebar.slider(
+        "Bin size (m)",
+        min_value=10,
+        max_value=500,
+        value=50,
+        step=10,
+        key="graph_bin_m",
+    )
+    
+    window = st.sidebar.slider(
+        "Rolling window (bins)",
+        min_value=3,
+        max_value=51,
+        value=11,
+        step=2,
+        key="graph_window",
+    )
+    
     show_raw = st.sidebar.checkbox(
         "Show raw scatter",
         value=True,
         key="graph_show_raw",
     )
 
-    # bin_m = st.sidebar.slider(
-    #     "Altitude bin size (m)",
-    #     min_value=10,
-    #     max_value=500,
-    #     value=50,
-    #     step=10,
-    #     key="graph_bin_m",
-    # )
-
-    # window = st.sidebar.slider(
-    #     "Rolling window (bins)",
-    #     min_value=3,
-    #     max_value=51,
-    #     value=11,
-    #     step=2,
-    #     key="graph_window",
-    # )
-
-    # show_ci = st.sidebar.checkbox(
-    #     "Show ~95% CI band (SEM)",
-    #     value=True,
-    #     key="graph_show_ci",
-    # )
+    show_ci = st.sidebar.checkbox(
+        "Show ~95% CI band (SEM)",
+        value=True,
+        key="graph_show_ci",
+    )
 
     try:
         st.caption(
@@ -95,7 +95,10 @@ def render_graph_page() -> None:
             graph_df,
             y_col=y_axis,
             x_col=x_axis,
+            bin_m = bin_m,
+            window = window,
             show_raw=show_raw,
+            show_ci = show_ci,
             title=f"{x_axis} vs {y_axis} (From {st.session_state['download_filename']})",
         )
 
