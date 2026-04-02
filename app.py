@@ -60,7 +60,7 @@ def render_graph_page() -> None:
         min_value=1,
         max_value=100,
         value=50,
-        step=10,
+        step=1,
         key="graph_bin_m",
     )
     
@@ -69,7 +69,7 @@ def render_graph_page() -> None:
         min_value=3,
         max_value=51,
         value=11,
-        step=2,
+        step=1,
         key="graph_window",
     )
     
