@@ -210,13 +210,6 @@ if st.button("Download + Convert", type="primary"):
 
 
 # ------------------------------------------------------------
-# Graph page
-# ------------------------------------------------------------
-if st.session_state["page"] == "graph":
-    render_graph_page()
-    st.stop()
-
-# ------------------------------------------------------------
 # Show download results if available
 # ------------------------------------------------------------
 if st.session_state["download_complete"]:
@@ -318,3 +311,10 @@ def render_graph_page() -> None:
         st.warning(f"Could not build graph from {st.session_state["download_filename"]}: {e}")
 
     st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
+
+# ------------------------------------------------------------
+# Graph page
+# ------------------------------------------------------------
+if st.session_state["page"] == "graph":
+    render_graph_page()
+    st.stop()
