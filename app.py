@@ -208,8 +208,6 @@ if st.button("Download + Convert", type="primary"):
             f"Done. Rows: {result.rows:,} | Columns: {result.cols:,}"
         )
 
-st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
-
 
 # ------------------------------------------------------------
 # Graph page
@@ -319,3 +317,4 @@ def render_graph_page() -> None:
     except Exception as e:
         st.warning(f"Could not build graph from {st.session_state["download_filename"]}: {e}")
 
+    st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
