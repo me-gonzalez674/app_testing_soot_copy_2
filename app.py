@@ -55,19 +55,19 @@ def render_graph_page() -> None:
 
     st.sidebar.header("Graph Controls")
     
-    bin_m = st.sidebar.slider(
-        "Bin size (m)",
+    poly_order = st.sidebar.slider(
+        "Polygon Order",
         min_value=1,
-        max_value=100,
-        value=50,
+        max_value=20,
+        value=3,
         step=1,
-        key="graph_bin_m",
+        key="graph_poly_order",
     )
     
     window = st.sidebar.slider(
-        "Rolling window (bins)",
+        "Rolling Window (Number of Points)",
         min_value=3,
-        max_value=51,
+        max_value=100,
         value=11,
         step=1,
         key="graph_window",
@@ -77,12 +77,6 @@ def render_graph_page() -> None:
         "Show raw scatter",
         value=True,
         key="graph_show_raw",
-    )
-
-    show_ci = st.sidebar.checkbox(
-        "Show ~95% CI band (SEM)",
-        value=True,
-        key="graph_show_ci",
     )
 
     try:
@@ -95,10 +89,9 @@ def render_graph_page() -> None:
             graph_df,
             y_col=y_axis,
             x_col=x_axis,
-            bin_m = bin_m,
+            poly_order = poly_order,
             window = window,
             show_raw=show_raw,
-            show_ci = show_ci,
             title=f"{x_axis} vs {y_axis} (From {st.session_state['download_filename']})",
         )
 
