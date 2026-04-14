@@ -19,41 +19,11 @@ from soot_tool.pipeline import run_download_convert
 def load_graph_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
-st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
-st.title("NASA SOOT — ICARTT Downloader + CSV Converter")
-
-st.write("Enter your NASA Earthdata Bearer Token to authorize downloads.")
-st.markdown(
-    "1. Log in at [urs.earthdata.nasa.gov](https://urs.earthdata.nasa.gov)\n"
-    "2. Click **Generate Token** from the top-right menu\n"
-    "3. Click **Show Token**, copy it, and paste it below\n\n"
-    "_Tokens are valid for 60 days and can be revoked at any time._"
-)
-
-user_token = st.text_input(
-    "Earthdata Bearer Token",
-    type="password",
-    placeholder="Paste your token here...",
-)
-
-if not user_token:
-    st.stop()
-
-
 @st.cache_resource(show_spinner="Authenticating with NASA Earthdata...")
 def get_session(token: str) -> "requests.Session":
     session = session_from_token(token)
     assert_authorized(session)
     return session
-
-
-try:
-    session = get_session(user_token)
-    st.success("Authorized ✅")
-except Exception as e:
-    st.error(str(e))
-    st.stop()
-
 
 # ------------------------------------------------------------
 # Graphing capabilities
@@ -174,7 +144,33 @@ if st.session_state["page"] == "graph":
 # ------------------------------------------------------------
 # Download page
 # ------------------------------------------------------------
+st.set_page_config(page_title="NASA SOOT ICARTT Converter", layout="wide")
+st.title("NASA SOOT — ICARTT Downloader + CSV Converter")
 
+st.write("Enter your NASA Earthdata Bearer Token to authorize downloads.")
+st.markdown(
+    "1. Log in at [urs.earthdata.nasa.gov](https://urs.earthdata.nasa.gov)\n"
+    "2. Click **Generate Token** from the top-right menu\n"
+    "3. Click **Show Token**, copy it, and paste it below\n\n"
+    "_Tokens are valid for 60 days and can be revoked at any time._"
+)
+
+user_token = st.text_input(
+    "Earthdata Bearer Token",
+    type="password",
+    placeholder="Paste your token here...",
+)
+
+if not user_token:
+    st.stop()
+
+try:
+    session = get_session(user_token)
+    st.success("Authorized ✅")
+except Exception as e:
+    st.error(str(e))
+    st.stop()
+    
 # ------------------------------------------------------------
 # Campaign selection
 # ------------------------------------------------------------
