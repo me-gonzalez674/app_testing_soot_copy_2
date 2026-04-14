@@ -103,6 +103,7 @@ def make_plot(
             label="Raw",
         )
 
+    profile = profile.sort_values(by = x_col)
     y = profile[y_col]
     x = profile[x_col]
     smoothed = savgol_filter(y, window_length=window, polyorder=poly_order)
