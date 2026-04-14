@@ -84,6 +84,7 @@ def make_plot(
     poly_order: int = 3,
     window: int = 11,
     show_raw: bool = True,
+    show_smoothed: bool = True,
     title: str = f"NASA SOOT Visualization",
 ) -> matplotlib.figure.Figure:
     fig = matplotlib.figure.Figure(figsize=(8, 7), dpi=150)
@@ -103,18 +104,19 @@ def make_plot(
             label="Raw",
         )
 
-    profile = profile.sort_values(by = x_col)
-    y = profile[y_col]
-    x = profile[x_col]
-    smoothed = savgol_filter(y, window_length=window, polyorder=poly_order)
-
-    ax.plot(
-        x,
-        smoothed,
-        linewidth=2,
-        color="#d62728",
-        label=f"Smoothed (rolling {window} bins)",
-    )
+    if show_smoothed:
+        profile = profile.sort_values(by = x_col)
+        y = profile[y_col]
+        x = profile[x_col]
+        smoothed = savgol_filter(y, window_length=window, polyorder=poly_order)
+    
+        ax.plot(
+            x,
+            smoothed,
+            linewidth=2,
+            color="#d62728",
+            label=f"Smoothed (rolling {window} bins)",
+        )
 
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
