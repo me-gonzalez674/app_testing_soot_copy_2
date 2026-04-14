@@ -75,8 +75,6 @@ def build_profile(
     
     return cleaned, profile
 
-plt.plot(x, smoothed, label='Savitzky-Golay', color='green')
-
 def make_plot(
     cleaned: pd.DataFrame,
     profile: pd.DataFrame,
