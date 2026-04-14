@@ -67,8 +67,8 @@ def render_graph_page() -> None:
     window = st.sidebar.slider(
         "Rolling Window (Number of Points)",
         min_value=3,
-        max_value=100,
-        value=11,
+        max_value=1000,
+        value=100,
         step=1,
         key="graph_window",
     )
