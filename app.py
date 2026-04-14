@@ -174,63 +174,6 @@ if st.session_state["page"] == "graph":
 # ------------------------------------------------------------
 # Download page
 # ------------------------------------------------------------
-st.title("NASA SOOT — ICARTT Downloader + CSV Converter")
-
-st.markdown(
-    "Enter your [NASA Earthdata Login](https://urs.earthdata.nasa.gov) credentials "
-    "to access and download SOOT data."
-)
-
-with st.expander("ℹ️ How your credentials are used", expanded=False):
-    st.markdown(
-        """
-        Your username and password are used **only** to authenticate with NASA's
-        Earthdata Login (urs.earthdata.nasa.gov) on your behalf. Specifically:
-
-        - Credentials are submitted directly to NASA's OAuth2 login endpoint over HTTPS
-        - They are **never stored**, logged, or written to disk
-        - They are discarded from memory immediately after your session is established
-        - Only the resulting session cookie is retained for the duration of your visit
-        - Closing or refreshing the app ends the session entirely
-
-        This is the same authentication method used by NASA's own
-        [earthaccess](https://github.com/nsidc/earthaccess) Python library.
-        """
-    )
-
-# ------------------------------------------------------------
-# Credential inputs
-# ------------------------------------------------------------
-col1, col2 = st.columns(2)
-with col1:
-    username = st.text_input(
-        "Earthdata Username",
-        value=st.session_state["saved_username"],
-        placeholder="Your Earthdata Login username",
-    )
-with col2:
-    password = st.text_input(
-        "Earthdata Password",
-        value=st.session_state["saved_password"],
-        type="password",
-        placeholder="Your Earthdata Login password",
-    )
-
-st.session_state["saved_username"] = username
-st.session_state["saved_password"] = password
-
-if not username or not password:
-    st.stop()
-
-# ------------------------------------------------------------
-# Authenticate
-# ------------------------------------------------------------
-try:
-    session = get_session(username, password)
-    st.success("Authorized ✅")
-except Exception as e:
-    st.error(str(e))
-    st.stop()
 
 # ------------------------------------------------------------
 # Campaign selection
