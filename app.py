@@ -74,9 +74,15 @@ def render_graph_page() -> None:
     )
     
     show_raw = st.sidebar.checkbox(
-        "Show raw scatter",
+        "Show Raw Scatter",
         value=True,
         key="graph_show_raw",
+    )
+
+    show_smoothed = st.sidebar.checkbox(
+        "Show Smoothed Graph",
+        value=True,
+        key="graph_show_smoothed",
     )
 
     try:
@@ -92,6 +98,7 @@ def render_graph_page() -> None:
             poly_order = poly_order,
             window = window,
             show_raw=show_raw,
+            show_smoothed=show_smoothed,
             title=f"{x_axis} vs {y_axis} (From {st.session_state['download_filename']})",
         )
 
