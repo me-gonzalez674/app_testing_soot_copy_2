@@ -103,12 +103,14 @@ def make_plot(
             label="Raw",
         )
 
-    smoothed = savgol_filter(profile[y_col], window_length=window, polyorder=poly_order)
+    y = profile[y_col]
+    x = profile[x_col]
+    smoothed = savgol_filter(y, window_length=window, polyorder=poly_order)
 
     ax.plot(
-        profile[x_col],
+        x,
         smoothed,
-        linewidth=2.6,
+        linewidth=2,
         color="#d62728",
         label=f"Smoothed (rolling {window} bins)",
     )
