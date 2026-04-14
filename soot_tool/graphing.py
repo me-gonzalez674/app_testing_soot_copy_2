@@ -152,6 +152,7 @@ def build_figure(
     poly_order: int = 3,
     window: int = 11,
     show_raw: bool = True,
+    show_smoothed: bool = True,
     title: str = "NASA SOOT — Ozone vs Altitude",
 ) -> matplotlib.figure.Figure:
     cleaned, profile = build_profile(
@@ -170,5 +171,6 @@ def build_figure(
         poly_order = poly_order,
         window = window,
         show_raw=show_raw,
+        show_smoothed = show_smoothed,
         title=title,
     )
