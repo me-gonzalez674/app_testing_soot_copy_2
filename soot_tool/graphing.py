@@ -106,7 +106,7 @@ def make_plot(
     smoothed = savgol_filter(profile[y_col], window_length=window, polyorder=poly_order)
 
     ax.plot(
-        profile["x_col"],
+        profile[x_col],
         smoothed,
         linewidth=2.6,
         color="#d62728",
