@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from soot_tool.graphing import build_figure
-from soot_tool.auth import session_from_credentials, assert_authorized
+from soot_tool.auth import session_from_token, assert_authorized
 from soot_tool.soot_api import (
     get_campaigns,
     get_years,
