@@ -1,4 +1,5 @@
 from __future__ import annotations
+from scipy.signal import savgol_filter
 
 import numpy as np
 import pandas as pd
@@ -52,44 +53,29 @@ def clean_data(
 
     return x
 
-
 def build_profile(
     df: pd.DataFrame,
     *,
     y_col: str = "Altitude_m_MSL",
     x_col: str = "Ozone_ppbv",
-    bin_m: int = 50,
+    poly_order: int = 3,
     window: int = 3,
     min_periods: int = 3,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    if bin_m <= 0:
-        raise ValueError("bin_m must be > 0.")
+    if poly_order <= 0:
+        raise ValueError("poly_order must be > 0.")
     if window <= 0:
         raise ValueError("window must be > 0.")
     
     cleaned = clean_data(df, y_col=y_col, x_col=x_col)
 
     cleaned = cleaned.copy()
-    cleaned["y_bin"] = (cleaned[y_col]/bin_m).round() * bin_m
 
-    profile = (
-        cleaned.groupby("y_bin")[y_col]
-        .agg(mean = "mean", median = "median", n = "size", std = "std")
-        .reset_index()
-        .sort_values("y_bin")
-    )
-
-    profile["sem"] = profile["std"] / np.sqrt(profile["n"])
-    profile.loc[profile["n"] < 5, "sem"] = np.nan
+    profile = cleaned
     
-    profile["mean_smooth"] = (
-        profile["mean"]
-        .rolling(window = window, center = True, min_periods = min_periods)
-        .mean()
-    )
-
     return cleaned, profile
 
+plt.plot(x, smoothed, label='Savitzky-Golay', color='green')
 
 def make_plot(
     cleaned: pd.DataFrame,
@@ -97,10 +83,9 @@ def make_plot(
     *,
     y_col: str = "Altitude_m_MSL",
     x_col: str = "Ozone_ppbv",
-    bin_m: int = 50,
+    poly_order: int = 3,
     window: int = 11,
     show_raw: bool = True,
-    show_ci: bool = True,
     title: str = f"NASA SOOT Visualization",
 ) -> matplotlib.figure.Figure:
     fig = matplotlib.figure.Figure(figsize=(8, 7), dpi=150)
@@ -120,37 +105,15 @@ def make_plot(
             label="Raw",
         )
 
-    ax.plot(
-        profile["mean"],
-        profile["y_bin"],
-        linewidth = 1.4,
-        alpha = 0.75,
-        color = "#1f77b4",
-        label = f"Binned mean({bin_m} m)"
-    )
+    smoothed = savgol_filter(profile[y_col], window_length=window, polyorder=poly_order)
 
     ax.plot(
-        profile["mean_smooth"],
-        profile["y_bin"],
+        profile["x_col"],
+        smoothed,
         linewidth=2.6,
         color="#d62728",
         label=f"Smoothed (rolling {window} bins)",
     )
-
-    if show_ci:
-        mask = profile["sem"].notna() & profile["mean_smooth"].notna()
-        if mask.any():
-            lower = profile.loc[mask, "mean_smooth"] - 1.96 * profile.loc[mask, "sem"]
-            upper = profile.loc[mask, "mean_smooth"] + 1.96 * profile.loc[mask, "sem"]
-
-            ax.fill_betweenx(
-                y=profile.loc[mask, "y_bin"],
-                x1=lower,
-                x2=upper,
-                alpha=0.18,
-                color="#ff7f0e",
-                label="~95% CI (SEM)",
-            )
 
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
@@ -183,17 +146,16 @@ def build_figure(
     *,
     y_col: str = "Altitude_m_MSL",
     x_col: str = "Ozone_ppbv",
-    bin_m: int = 50,
+    poly_order: int = 3,
     window: int = 11,
     show_raw: bool = True,
-    show_ci: bool = True,
     title: str = "NASA SOOT — Ozone vs Altitude",
 ) -> matplotlib.figure.Figure:
     cleaned, profile = build_profile(
         df,
         y_col=y_col,
         x_col=x_col,
-        bin_m = bin_m,
+        poly_order = poly_order,
         window = window,
     )
 
@@ -202,9 +164,8 @@ def build_figure(
         profile,
         y_col=y_col,
         x_col=x_col,
-        bin_m = bin_m,
+        poly_order = poly_order,
         window = window,
         show_raw=show_raw,
-        show_ci = show_ci,
         title=title,
     )
