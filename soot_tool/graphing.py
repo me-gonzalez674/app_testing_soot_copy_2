@@ -100,7 +100,7 @@ def make_plot(
             s=7,
             alpha=0.10,
             linewidths=0,
-            color="#9aa0a6",
+            color="#6f7478",
             label="Raw",
         )
 
