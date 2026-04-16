@@ -87,7 +87,7 @@ def make_plot(
     show_smoothed: bool = True,
     title: str = f"NASA SOOT Visualization",
 ) -> matplotlib.figure.Figure:
-    fig = matplotlib.figure.Figure(figsize=(7, 6), dpi=150)
+    fig = matplotlib.figure.Figure(figsize=(7, 6), dpi=100)
     ax = fig.add_subplot(111)
 
     ax.spines["top"].set_visible(False)
