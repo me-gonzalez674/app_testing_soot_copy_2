@@ -115,7 +115,7 @@ def make_plot(
             smoothed,
             linewidth=2,
             color="#d62728",
-            label=f"Smoothed (rolling {window} bins)",
+            label=f"Smoothed",
         )
 
     ax.set_title(title)
