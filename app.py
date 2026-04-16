@@ -99,7 +99,7 @@ def render_graph_page() -> None:
             window = window,
             show_raw=show_raw,
             show_smoothed=show_smoothed,
-            title=f"{x_axis} vs {y_axis} (From {st.session_state['download_filename']})",
+            title=f"{x_axis} vs {y_axis} \n (From {st.session_state['download_filename']})",
         )
 
         st.pyplot(fig)
