@@ -56,7 +56,7 @@ def render_graph_page() -> None:
     st.sidebar.header("Graph Controls")
     
     poly_order = st.sidebar.slider(
-        "Polygon Order",
+        "Polynomial Order",
         min_value=1,
         max_value=6,
         value=3,
