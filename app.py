@@ -30,9 +30,7 @@ def get_session(token: str) -> "requests.Session":
 # ------------------------------------------------------------
 def render_graph_page() -> None:
     st.title("Graph")
-    st.write(f"This graph is generated from {st.session_state['download_filename']}. Error bars on the smoothed graph cannot be provided 
-    because there is no closed-form solution for these standard errors and bootstrapping to estimate standard errors would slow down
-    the app to make it unusable.")
+    st.write(f"This graph is generated from {st.session_state['download_filename']}. Error bars on the smoothed graph cannot be provided because there is no closed-form solution for these standard errors and bootstrapping to estimate standard errors would slow down the app to make it unusable.")
 
     if st.button("← Back to Download Page"):
         st.session_state["page"] = "download"
