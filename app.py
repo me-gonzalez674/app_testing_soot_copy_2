@@ -58,7 +58,7 @@ def render_graph_page() -> None:
     poly_order = st.sidebar.slider(
         "Polygon Order",
         min_value=1,
-        max_value=20,
+        max_value=6,
         value=3,
         step=1,
         key="graph_poly_order",
