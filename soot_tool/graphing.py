@@ -122,7 +122,7 @@ def make_plot(
     ax.set_xlabel(f"{x_col}")
     ax.set_ylabel(f"{y_col}")
     ax.grid(True, alpha=0.22)
-    ax.legend(frameon=False, shadow = True, loc="best")
+    ax.legend(frameon=True, shadow = True, loc="best")
 
     # ------------------------------------------------------------
     # FIXED AXIS LIMITS (independent of plotting order)
