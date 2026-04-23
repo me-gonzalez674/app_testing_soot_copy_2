@@ -32,9 +32,9 @@ def render_graph_page() -> None:
     st.title("Graph")
     st.write(f"This graph is generated from {st.session_state['download_filename']}. Error bars on the smoothed graph cannot be "
              f"provided because there is no closed-form solution for these standard errors and bootstrapping to estimate standard" 
-             f"errors would slow down the app to make it unusable. For the scope of this project, smoothing done with a Savitzky–Golay" 
-             f"filter which is best used for evenly spaced data. This data is not always evenly spaced, but due to time constraints, "
-             f"this smoothing practice remains. Please note this as you analyze smoothed graphs.")
+             f"errors would slow down the app to make it unusable. For the scope of this project, smoothing is done with a Savitzky–Golay" 
+             f"filter, which is best used for evenly spaced data. This data is not always evenly spaced, but due to time constraints, "
+             f"this smoothing technique was sufficient. Please note this as you analyze smoothed graphs.")
 
     if st.button("← Back to Download Page"):
         st.session_state["page"] = "download"
