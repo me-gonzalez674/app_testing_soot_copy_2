@@ -85,7 +85,11 @@ def render_graph_page() -> None:
         key="graph_show_smoothed",
     )
 
-    smooth_vertical = st.checkbox("Smooth Vertically", value = False)
+    smooth_vertical = st.checkbox(
+        "Smooth Vertically", 
+        value = False,
+        key = "graph_smooth_vertical"
+    )
 
     try:
         st.caption(
