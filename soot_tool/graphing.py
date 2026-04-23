@@ -85,6 +85,7 @@ def make_plot(
     window: int = 11,
     show_raw: bool = True,
     show_smoothed: bool = True,
+    smooth_vertical: bool = False,
     title: str = f"NASA SOOT Visualization",
 ) -> matplotlib.figure.Figure:
     fig = matplotlib.figure.Figure(figsize=(6, 5), dpi=150)
