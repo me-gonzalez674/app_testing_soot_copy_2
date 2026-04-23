@@ -85,7 +85,7 @@ def render_graph_page() -> None:
         key="graph_show_smoothed",
     )
 
-    smooth_vertical = st.checkbox(
+    smooth_vertical = st.sidebar.checkbox(
         "Smooth Vertically", 
         value = False,
         key = "graph_smooth_vertical"
