@@ -85,6 +85,8 @@ def render_graph_page() -> None:
         key="graph_show_smoothed",
     )
 
+    smooth_vertical = st.checkbox("Smooth Vertically", value = False)
+
     try:
         st.caption(
             f"Using {len(graph_df):,} rows from {st.session_state['download_filename']} "
@@ -99,6 +101,7 @@ def render_graph_page() -> None:
             window = window,
             show_raw=show_raw,
             show_smoothed=show_smoothed,
+            smooth_vertical = smooth_vertical,
             title=f"{x_axis} vs {y_axis} \n (From {st.session_state['download_filename']})",
         )
 
