@@ -105,18 +105,32 @@ def make_plot(
         )
 
     if show_smoothed:
-        profile = profile.sort_values(by = x_col)
-        y = profile[y_col]
-        x = profile[x_col]
-        smoothed = savgol_filter(y, window_length=window, polyorder=poly_order)
-    
-        ax.plot(
-            x,
-            smoothed,
-            linewidth=2,
-            color="#d62728",
-            label=f"Smoothed",
-        )
+        if smooth_vertical:
+            profile = profile.sort_values(by=y_col)
+            y = profile[y_col]
+            x = profile[x_col]
+            smoothed = savgol_filter(x, window_length=window, polyorder=poly_order)
+            
+            ax.plot(
+                smoothed,
+                y,
+                linewidth=2,
+                color="#d62728",
+                label="Smoothed (Vertically)",
+            )
+        else:
+            profile = profile.sort_values(by = x_col)
+            y = profile[y_col]
+            x = profile[x_col]
+            smoothed = savgol_filter(y, window_length=window, polyorder=poly_order)
+        
+            ax.plot(
+                x,
+                smoothed,
+                linewidth=2,
+                color="#d62728",
+                label=f"Smoothed (Horizontally)",
+            )
 
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
@@ -153,6 +167,7 @@ def build_figure(
     window: int = 11,
     show_raw: bool = True,
     show_smoothed: bool = True,
+    smooth_vertical: bool = False,
     title: str = "NASA SOOT — Ozone vs Altitude",
 ) -> matplotlib.figure.Figure:
     cleaned, profile = build_profile(
@@ -172,5 +187,6 @@ def build_figure(
         window = window,
         show_raw=show_raw,
         show_smoothed = show_smoothed,
+        smooth_vertical = smooth_vertical,
         title=title,
     )
