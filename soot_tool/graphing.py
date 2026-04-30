@@ -86,6 +86,7 @@ def make_plot(
     show_raw: bool = True,
     show_smoothed: bool = True,
     smooth_vertical: bool = False,
+    reverse_vertical: bool = False,
     title: str = f"NASA SOOT Visualization",
 ) -> matplotlib.figure.Figure:
     fig = matplotlib.figure.Figure(figsize=(6, 5), dpi=150)
@@ -133,6 +134,9 @@ def make_plot(
                 label=f"Smoothed (Horizontally)",
             )
 
+    if reverse_vertical:
+        ax.yaxis.set_inverted(True)
+
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
     ax.set_ylabel(f"{y_col}")
@@ -169,6 +173,7 @@ def build_figure(
     show_raw: bool = True,
     show_smoothed: bool = True,
     smooth_vertical: bool = False,
+    reverse_vertical: bool = False,
     title: str = "NASA SOOT — Ozone vs Altitude",
 ) -> matplotlib.figure.Figure:
     cleaned, profile = build_profile(
@@ -189,5 +194,6 @@ def build_figure(
         show_raw=show_raw,
         show_smoothed = show_smoothed,
         smooth_vertical = smooth_vertical,
+        reverse_vertical = reverse_vertical,
         title=title,
     )
