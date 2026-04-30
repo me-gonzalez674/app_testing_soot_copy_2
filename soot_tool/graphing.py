@@ -133,13 +133,11 @@ def make_plot(
                 color="#d62728",
                 label=f"Smoothed (Horizontally)",
             )
-
-    if reverse_vertical:
-        ax.yaxis.set_inverted(True)
-
+            
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
     ax.set_ylabel(f"{y_col}")
+    ax.yaxis.set_inverted(reverse_vertical)
     ax.grid(True, alpha=0.22)
     ax.legend(frameon=True, shadow = True, loc="best")
 
