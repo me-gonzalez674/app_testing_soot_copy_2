@@ -95,6 +95,12 @@ def render_graph_page() -> None:
         key = "graph_smooth_vertical"
     )
 
+    reverse_vertical = st.sidebar.checkbox(
+        "Reverse Y-Axis", 
+        value = False,
+        key = "graph_reverse_vertical"
+    )
+
     try:
         st.caption(
             f"Using {len(graph_df):,} rows from {st.session_state['download_filename']} "
@@ -110,6 +116,7 @@ def render_graph_page() -> None:
             show_raw=show_raw,
             show_smoothed=show_smoothed,
             smooth_vertical = smooth_vertical,
+            reverse_vertical = reverse_vertical,
             title=f"{x_axis} vs {y_axis} \n (From {st.session_state['download_filename']})",
         )
 
