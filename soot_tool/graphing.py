@@ -137,7 +137,6 @@ def make_plot(
     ax.set_title(title)
     ax.set_xlabel(f"{x_col}")
     ax.set_ylabel(f"{y_col}")
-    ax.yaxis.set_inverted(reverse_vertical)
     ax.grid(True, alpha=0.22)
     ax.legend(frameon=True, shadow = True, loc="best")
 
@@ -155,7 +154,11 @@ def make_plot(
     y_pad = 0.05 * (y_max - y_min)
 
     ax.set_xlim(x_min - x_pad, x_max + x_pad)
-    ax.set_ylim(y_min - y_pad, y_max + y_pad)
+
+    if reverse_vertical:
+        ax.set_ylim(y_max + y_pad, y_min - y_pad)
+    else:
+        ax.set_ylim(y_min - y_pad, y_max + y_pad)
 
     fig.tight_layout()
     return fig
